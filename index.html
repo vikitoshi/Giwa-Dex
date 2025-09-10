@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>GIWA DEX — ETH ↔ INSDR</title>
+  <link rel="icon" type="image/jpeg" href="./assets/insiders.jpg"/>
+  <link rel="stylesheet" href="./styles.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+</head>
+<body>
+  <header class="navbar">
+    <div class="nav-inner">
+      <div class="brand">
+        <img src="./assets/insiders.jpg" alt="Insiders" class="brand-icon" />
+        <div class="brand-text">
+          <strong>GIWA DEX</strong>
+          <span>GIWA Sepolia • Chain ID 91342</span>
+        </div>
+      </div>
+
+      <nav class="navtabs">
+        <button id="tab-swap" class="tab active">Swap</button>
+        <button id="tab-liq" class="tab">Liquidity</button>
+        <button id="tab-faucet" class="tab">Faucet</button>
+      </nav>
+
+      <div class="wallet">
+        <div class="status">
+          <span id="netDot" class="dot"></span>
+          <span id="netText">Not connected</span>
+        </div>
+        <div class="wallet-actions">
+          <button id="btnDisconnect" class="ghost" style="display:none">Disconnect</button>
+          <button id="btnConnect">Connect Wallet</button>
+        </div>
+        <div id="addr" class="addr" style="display:none"></div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="mainwrap">
+    <section id="view-swap" class="card swap">
+      <div class="card-head">
+        <h3>Swap</h3>
+        <button id="btnSlip" class="ghost">Slippage: <span id="slipVal">0.5%</span></button>
+      </div>
+
+      <div class="io">
+        <div class="io-top">
+          <span class="label">From</span>
+          <span id="balanceText" class="muted small">Balance: —</span>
+        </div>
+        <div class="io-row">
+          <div class="token">
+            <select id="fromToken" class="token-select">
+              <option value="ETH">ETH</option>
+              <option value="INSDR">INSDR</option>
+            </select>
+          </div>
+          <div class="amount">
+            <input id="amountIn" type="number" min="0" step="any" placeholder="0.0"/>
+            <button id="btnMax" class="chip">MAX</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="switch-row">
+        <button id="btnFlip" class="switch" title="Switch tokens" aria-label="Switch tokens">⇅</button>
+      </div>
+
+      <div class="io">
+        <div class="io-top">
+          <span class="label">To (estimated)</span>
+          <span class="muted small">Min received respects slippage</span>
+        </div>
+        <div class="io-row">
+          <div class="token readonly">
+            <input id="toToken" value="INSDR" readonly/>
+          </div>
+          <div class="amount estbox">
+            <div id="quote" class="est">—</div>
+          </div>
+        </div>
+        <div id="minOut" class="hint">Min received: —</div>
+      </div>
+
+      <div class="stats">
+        <div><span class="muted">Reserves</span><div id="reserves" class="strong">—</div></div>
+        <div><span class="muted">Fee</span><div id="feeLine" class="strong">—</div></div>
+        <div><span class="muted">Mid price</span><div id="priceMid" class="strong">—</div></div>
+        <div>
+          <span class="muted">Execution / Impact</span>
+          <div class="exec">
+            <span id="priceExec" class="strong">—</span>
+            <span id="impactBadge" class="pill ok"><span id="impact">—</span></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="btnApprove" class="ghost" style="display:none">Approve INSDR</button>
+        <button id="btnSwap">Swap</button>
+      </div>
+
+      <div id="swapStatus" class="statusline"></div>
+      <div class="subnote">Slippage & price impact applied. View successful tx in explorer via toast.</div>
+    </section>
+
+    <section id="view-liq" class="card hidden">
+      <div class="card-head">
+        <h3>Liquidity</h3>
+        <button id="btnSlipLiq" class="ghost">Slippage: <span id="slipValLiq">0.5%</span></button>
+      </div>
+
+      <div class="panel">
+        <div class="row">
+          <div class="token">
+            <label>ETH</label>
+            <input id="liqEth" type="number" min="0" step="any" placeholder="0.0"/>
+            <div id="liqEthBal" class="hint">Balance: —</div>
+          </div>
+          <div class="token">
+            <label>INSDR</label>
+            <input id="liqIndsr" type="number" min="0" step="any" placeholder="0.0"/>
+            <div id="liqIndsrBal" class="hint">Balance: —</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2 mini">
+        <div><span class="muted">Pool reserves</span><div id="liqRes">—</div></div>
+        <div><span class="muted">Recommended INSDR</span><div id="liqReco">—</div></div>
+        <div><span class="muted">Min INSDR (slippage)</span><div id="liqMin">—</div></div>
+        <div><span class="muted">Note</span><div class="muted">Pool keeps ratio automatically.</div></div>
+      </div>
+
+      <div class="actions">
+        <button id="btnLiqApprove" class="ghost" style="display:none">Approve INSDR</button>
+        <button id="btnAddLiq">Add Liquidity</button>
+      </div>
+      <div id="liqStatus" class="statusline"></div>
+
+      <div class="card-head" style="margin-top:8px"><h3>My Pools</h3></div>
+      <div class="panel">
+        <div class="grid-2 mini">
+          <div><span class="muted">My LP Balance</span><div id="lpBal" class="strong">—</div></div>
+          <div><span class="muted">Pool Share</span><div id="lpShare" class="strong">—</div></div>
+          <div><span class="muted">Underlying ETH</span><div id="lpEth" class="strong">—</div></div>
+          <div><span class="muted">Underlying INSDR</span><div id="lpToken" class="strong">—</div></div>
+        </div>
+      </div>
+
+      <div class="card-head" style="margin-top:8px"><h3>Remove Liquidity</h3></div>
+      <div class="panel">
+        <div class="row">
+          <div class="token">
+            <label>Remove percentage</label>
+            <input id="rmPct" type="number" min="0" max="100" step="1" placeholder="0"/>
+            <div class="hint">Set percent of your LP to burn</div>
+          </div>
+          <div class="token">
+            <label>Receive</label>
+            <select id="rmReceive" class="token-select">
+              <option value="eth" selected>ETH + INSDR</option>
+              <option value="weth">WETH + INSDR</option>
+            </select>
+            <div class="hint">ETH unwrap (recommended)</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="btnRemoveLiq" class="ghost">Remove Liquidity</button>
+        <button id="btnRefreshPools">Refresh</button>
+      </div>
+      <div id="rmStatus" class="statusline"></div>
+    </section>
+
+    <section id="view-faucet" class="card hidden">
+      <div class="card-head"><h3>INSDR Faucet</h3></div>
+      <div class="panel center">
+        <button id="btnClaim" class="big">Claim 100 INSDR</button>
+      </div>
+      <div id="faucetStatus" class="statusline"></div>
+      <div class="hint">Limit: up to 3 claims per wallet (subject to faucet config and balance).</div>
+    </section>
+
+    <section id="view-recents" class="card history">
+      <div class="card-head">
+        <h3>Recent Activity</h3>
+        <button id="txClear" class="ghost">Clear</button>
+      </div>
+      <ul id="txList" class="tx-list"><li class="muted">No recent transactions.</li></ul>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="foot-left">
+      <div class="logo sm">DEX</div>
+      <div>
+        <strong>GIWA SWAP</strong>
+        <div class="muted">Simple dex</div>
+      </div>
+    </div>
+    <div class="foot-links">
+      <a href="https://sepolia-explorer.giwa.io" target="_blank" rel="noreferrer">Explorer</a>
+      <a href="https://t.me/AirdropInsiderID" target="_blank" rel="noreferrer" class="tg">Telegram</a>
+    </div>
+  </footer>
+
+  <div id="toasts"></div>
+
+  <div id="slipModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" id="slipBackdrop"></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="slipTitle">
+      <div class="modal-head">
+        <h3 id="slipTitle">Slippage Tolerance</h3>
+        <button id="slipClose" class="icon">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="chiprow">
+          <button class="chip preset" data-val="0.1">0.1%</button>
+          <button class="chip preset" data-val="0.5">0.5%</button>
+          <button class="chip preset" data-val="1">1.0%</button>
+          <button class="chip preset" data-val="3">3.0%</button>
+        </div>
+        <label class="field">
+          <span>Custom</span>
+          <div class="field-row">
+            <input id="slipInput" type="number" min="0" step="0.1" placeholder="0.5"/>
+            <span class="suffix">%</span>
+          </div>
+        </label>
+        <p class="muted small">Tx will revert if output is lower than minimum based on this slippage.</p>
+      </div>
+      <div class="modal-actions">
+        <button id="slipCancel" class="ghost">Cancel</button>
+        <button id="slipSave">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
